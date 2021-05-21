@@ -18,6 +18,7 @@ river <- read_csv(here("data", "prelabware_river.csv"), col_names = col_names, s
 river <- river %>%
   select(Site:`E. coli`) %>%
   select(-`Sample Type`) %>%
+  select(-`Sample ID`) %>% 
   rename(
     `Sample Site` = Site,
     `Sample Date` = `Date Time`,
@@ -226,6 +227,7 @@ river_long <- river_long %>%
   filter(`Formatted Result` != "TRUE")
 
 # pre-2000 reservoir data - similar workflow to river data
+# guess_max argument added to avoid misidentifying column type
 col_names <- names(read_csv(here("data", "prelabware_reservoir.csv"), n_max = 0))
 reservoir <- read_csv(here("data", "prelabware_reservoir.csv"), col_names = col_names, skip = 2, guess_max = 5000, cols(
   .default = col_character()))
