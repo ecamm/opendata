@@ -418,6 +418,9 @@ glimpse(pre_2018)
 pre_2018_filtered <- pre_2018 %>%
   filter(!is.na(`Formatted Result`))
 
+pre_2018_filtered <- pre_2018 %>% 
+  filter(!is.na(`Numeric Result`))
+
 # janitor::get_dupes(pre_2000_filtered)  #22 duplicate entries from Sarcee Bridge
 #filtering out duplicate values
 pre_2018_filtered <- pre_2018_filtered %>%
@@ -583,6 +586,10 @@ pre_2018_filtered <- pre_2018_filtered %>%
       TRUE ~ as.character(`Formatted Result`)
     )
   )
+
+#check to see if any results are NAs in the Numeric Result
+#will break the Open Data migration to have NA in this column
+any(is.na(pre_2018_filtered$`Numeric Result`))
 
 write_excel_csv(pre_2018_filtered, here("output", "prelabware_watershed_final.csv")) # need to use write_excel_csv to account for special characters with UTF-8 encoding
 
