@@ -29,6 +29,7 @@ river <- river %>%
   )
 
 # convert date to date_time format
+# look for any parsing errors with inconsistent excel time formats
 river$`Sample Date` <- mdy_hm(river$`Sample Date`)
 
 # align site names to open data format
@@ -83,7 +84,7 @@ unit_turb <- "Turbidity"
 unit_color <- "True Color"
 unit_sar <- "Sodium Adsorption Ratio (SAR)(Calculated)"
 
-#assign units based on parameter
+# assign units based on parameter
 river_long <- river_long %>%
   mutate(
     `Result Units` = case_when(
@@ -114,7 +115,7 @@ river_long <- river_long %>%
     `LIMS Component Name` = NA
   )
 
-#assign site key based on site name
+# assign site key based on site name
 river_long <- river_long %>%
   mutate(
     `Site Key` = case_when(
@@ -149,7 +150,7 @@ river_long <- river_long %>%
     )
   )
 
-#remove NAs for sample sites
+# remove NAs for sample sites
 river_long <- river_long %>%
   filter(!is.na(`Sample Site`))
 
@@ -204,8 +205,8 @@ river_long <- river_long %>%
     `Longitude (Degrees)`
   )
 
-#assign numeric result and result qualifier based on formatted result
-#creates new columns for numeric values and the qualifier identification
+# assign numeric result and result qualifier based on formatted result
+# creates new columns for numeric values and the qualifier identification
 river_long <- river_long %>%
   mutate(
     `Numeric Result` = `Formatted Result`,
@@ -216,7 +217,7 @@ river_long <- river_long %>%
     )
   )
 
-#remove character values to convert to column to numeric type 
+# remove character values to convert to column to numeric type while maintaining number values 
 river_long$`Numeric Result` <- river_long$`Numeric Result` %>%
   str_remove_all("<") %>%
   str_remove_all(">") %>%
@@ -243,9 +244,10 @@ reservoir <- reservoir %>%
     `Total Dissolved Solids (TDS)(Calculated)` = `Total Dissolved Solids (TDS) (Calculated)`
   )
 
-reservoir$`Sample Date` <- dmy_hm(reservoir$`Sample Date`)
+# change to proper datetime format.  Careful of parsing errors here
+reservoir$`Sample Date` <- mdy_hm(reservoir$`Sample Date`)
 
-#renaming sites to open_data naming structure
+# renaming sites to open_data naming structure
 reservoir <- reservoir %>%
   mutate(`Sample Site` = case_when(
     str_detect(`Sample Site`, "Heritage") ~ "Glenmore Reservoir Heritage Cove",
@@ -255,17 +257,17 @@ reservoir <- reservoir %>%
     TRUE ~ `Sample Site`
   ))
 
-#remove parameter
+# remove parameter
 reservoir <- reservoir %>%
   select(-"Chlorophyll a IV fluorescence")
 
-##pre 1993 data that had multiple samples per site
+# pre 1993 data that had multiple samples per site
 pre_1993 <- reservoir %>% 
   mutate(year = year(`Sample Date`)) %>% 
   filter(year < 1993) %>% 
   select(-year)
 
-#need to convert to numeric format to average values in next step
+# need to convert to numeric format to average values in next step
 pre_1993 <- pre_1993 %>% 
   pivot_longer(
     cols = -c(`Sample Site`:`Sample`), names_to = "Parameter",
@@ -273,7 +275,7 @@ pre_1993 <- pre_1993 %>%
     values_transform = list(`Formatted Result` = "as.numeric")
   )
 
-#averaging multiple results per site per day
+# averaging multiple results per site per day
 pre_1993 <- pre_1993 %>% 
   select(-Sample) %>% 
   group_by(
@@ -282,9 +284,11 @@ pre_1993 <- pre_1993 %>%
   mutate(`Formatted Result` = round(mean(`Formatted Result`), 3)) %>% 
   ungroup()
 
-#convert back to character format 
+# convert back to character format 
 pre_1993$`Formatted Result` <- as.character(pre_1993$`Formatted Result`)
 
+# assign numeric result and result qualifier based on formatted result
+# creates new columns for numeric values and the qualifier identification
 pre_1993 <- pre_1993 %>% 
   mutate(
     `Numeric Result` = `Formatted Result`,
@@ -294,6 +298,7 @@ pre_1993 <- pre_1993 %>%
     )
   )
 
+# remove character values to convert to column to numeric type while maintaining number values 
 pre_1993$`Numeric Result` <- pre_1993$`Numeric Result` %>%
   str_remove_all("<") %>%
   str_remove_all(">") %>%
@@ -301,7 +306,7 @@ pre_1993$`Numeric Result` <- pre_1993$`Numeric Result` %>%
   as.numeric()
 
 ####
-#filtering for data after 1993
+# filtering for data after 1993
 reservoir <- reservoir %>% 
   mutate(year = year(`Sample Date`)) %>% 
   filter(year >= 1993) %>% 
@@ -334,7 +339,7 @@ reservoir_char$`Numeric Result` <- reservoir_char$`Numeric Result` %>%
   str_remove_all("b") %>%
   as.numeric()
 
-#joining pre 1993 averaged data and the rest of the reservoir data
+# joining pre 1993 averaged data and the rest of the reservoir data
 reservoir_binded <- rbind(pre_1993, reservoir_char)
 reservoir_binded <- reservoir_binded %>% 
   filter(`Sample Site`!= "Glenmore Reservoir Screen House") %>% 
@@ -350,7 +355,7 @@ unit_depth <- c("Euphotic Depth (Calculated)", "Secchi Depth", "Sample Depth", "
 unit_redox <- "Redox"
 unit_chlorophyll <- "Chlorophyll a"
 
-#assign units using unit vectors
+# assign units using unit vectors
 reservoir_long <- reservoir_binded %>%
   mutate(
     `Result Units` = case_when(
@@ -381,7 +386,7 @@ reservoir_long <- reservoir_long %>%
     `LIMS Component Name` = NA
   )
 
-#assign site keys 
+# assign site keys 
 reservoir_long <- reservoir_long %>%
   mutate(
     `Site Key` = case_when(
@@ -399,7 +404,7 @@ reservoir_long <- reservoir_long %>%
 # join coordinates to overall dataframe by Sample Site
 reservoir_long <- left_join(reservoir_long, coordinates, by = "Sample Site")
 
-#select parameters aligned to open_data format
+# select parameters aligned to open_data format
 reservoir_long <- reservoir_long %>%
   select(
     `Sample Site`, `Site Key`, `Sample Date`, `LIMS Component Name`, `Parameter`, `Numeric Result`,
@@ -414,7 +419,7 @@ reservoir_long <- distinct(reservoir_long) #remove duplicate values
 pre_2018 <- rbind(river_long, reservoir_long)
 glimpse(pre_2018)
 
-#filtering out NA values for results
+# filtering out NA values for results
 pre_2018_filtered <- pre_2018 %>%
   filter(!is.na(`Formatted Result`))
 
@@ -422,7 +427,7 @@ pre_2018_filtered <- pre_2018 %>%
   filter(!is.na(`Numeric Result`))
 
 # janitor::get_dupes(pre_2000_filtered)  #22 duplicate entries from Sarcee Bridge
-#filtering out duplicate values
+# filtering out duplicate values
 pre_2018_filtered <- pre_2018_filtered %>%
   distinct()
 
@@ -495,7 +500,7 @@ pre_2018_filtered <- pre_2018_filtered %>%
     )
   )
 
-#to round Formatted Results, have to convert to numeric type, then reapply qualifier character to column
+# to round Formatted Results, have to convert to numeric type, then reapply qualifier character to column
 pre_2018_filtered <- pre_2018_filtered %>%
   mutate(
     `Formatted Result` = case_when(
@@ -568,7 +573,7 @@ pre_2018_filtered <- pre_2018_filtered %>%
     )
   )
 
-#pH values rounded to 1 decimal place
+# pH values rounded to 1 decimal place
 pre_2018_filtered <- pre_2018_filtered %>%
   mutate_at(
     .vars = vars(`Numeric Result`),
@@ -587,9 +592,12 @@ pre_2018_filtered <- pre_2018_filtered %>%
     )
   )
 
-#check to see if any results are NAs in the Numeric Result
-#will break the Open Data migration to have NA in this column
+# check to see if any results are NAs in the Numeric Result
+# will break the Open Data migration to have NA in this column
 any(is.na(pre_2018_filtered$`Numeric Result`))
+
+# save csv file 
+# given to CAI to upload to Open Data Portal and merge with post Labware results which are pulled directly
 
 write_excel_csv(pre_2018_filtered, here("output", "prelabware_watershed_final.csv")) # need to use write_excel_csv to account for special characters with UTF-8 encoding
 
